@@ -1,25 +1,37 @@
 const sampleBlogs = [
     {
         id: 1,
-        title: "Getting Started with HTML",
+        title: "Getting Started with Semantic HTML5",
         category: "Web Development",
-        author: "Admin",
+        author: "Adithya",
         date: "Nov 10, 2026",
-        content: "Learn semantic tags and document structures easily to build accessible websites."
+        content: "Semantic HTML5 tags like &lt;header&gt;, &lt;main&gt;, &lt;article&gt;, and &lt;section&gt; give your web pages clear meaning for both browsers and screen readers. Instead of wrapping everything in generic &lt;div&gt; containers, using semantic structures improves SEO, accessibility, and code readability across large frontend projects."
     },
     {
         id: 2,
-        title: "Understanding CSS Grid",
+        title: "Mastering Responsive Layouts with CSS Grid",
         category: "CSS & Design",
-        author: "Admin",
+        author: "Adithya",
         date: "Nov 12, 2026",
-        content: "Build responsive two-dimensional layouts cleanly without relying on complex floats."
+        content: "CSS Grid introduces a true two-dimensional layout system to the web. By combining grid-template-columns with repeat(auto-fill, minmax(320px, 1fr)), you can create fluid card grids that adapt seamlessly from desktop monitors to mobile screens without writing dozens of complex media queries."
+    },
+    {
+        id: 3,
+        title: "Client-Side State Management with LocalStorage",
+        category: "JavaScript",
+        author: "Codomax Team",
+        date: "Nov 14, 2026",
+        content: "Modern web applications often need to persist user sessions and dynamic content across page reloads. Using JSON.stringify() and JSON.parse() with the browser's localStorage API lets you build complete authentication flows and CRUD dashboards in pure vanilla JavaScript."
     }
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
-    if (!localStorage.getItem("blogs")) {
+    let storedBlogs = JSON.parse(localStorage.getItem("blogs"));
+
+    // Force update sample data if it has broken tags or missing fields
+    if (!storedBlogs || storedBlogs.some(b => !b.category || !b.author || b.content.includes(",,,"))) {
         localStorage.setItem("blogs", JSON.stringify(sampleBlogs));
+        storedBlogs = sampleBlogs;
     }
 
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -54,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
 
-            if (username === "" || email === "" || password === "") {
+            if (!username || !email || !password) {
                 alert("Please fill in all fields.");
                 return;
             }
@@ -103,18 +115,70 @@ document.addEventListener("DOMContentLoaded", () => {
         const blogs = JSON.parse(localStorage.getItem("blogs")) || [];
         homeContainer.innerHTML = "";
 
-        blogs.forEach(blog => {
-            const card = document.createElement("div");
-            card.className = "blog-card";
-            card.innerHTML = `
-                <div>
-                    <span class="badge">${blog.category || "General"}</span>
-                    <h3>${blog.title}</h3>
-                    <div class="blog-meta">By ${blog.author || "Author"} • ${blog.date || "2026"}</div>
-                    <p>${blog.content}</p>
+        // Create reader modal dynamically
+        const modal = document.createElement("div");
+        modal.className = "modal-overlay";
+        modal.innerHTML = `
+            <div class="modal-box">
+                <div class="modal-header">
+                    <span class="badge" id="modal-category"></span>
+                    <button class="close-modal" id="close-modal">&times;</button>
                 </div>
+                <h2 id="modal-title" style="margin-bottom: 0.5rem;"></h2>
+                <p id="modal-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;"></p>
+                <p id="modal-content" style="color: var(--text-secondary); line-height: 1.8; white-space: pre-line;"></p>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById("close-modal").addEventListener("click", () => modal.classList.remove("active"));
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) modal.classList.remove("active");
+        });
+
+        blogs.forEach(blog => {
+            const initials = blog.author ? blog.author.slice(0, 2).toUpperCase() : "CB";
+            const card = document.createElement("article");
+            card.className = "blog-card";
+            
+            // Build card structure safely using textContent for paragraph text
+            const topDiv = document.createElement("div");
+            topDiv.innerHTML = `<span class="badge">${blog.category || "General"}</span><h3>${blog.title}</h3>`;
+            
+            const p = document.createElement("p");
+            p.textContent = blog.content; // Safe from HTML tag stripping
+            topDiv.appendChild(p);
+
+            const footerDiv = document.createElement("div");
+            footerDiv.className = "card-footer";
+            footerDiv.innerHTML = `
+                <div class="author-info">
+                    <div class="avatar">${initials}</div>
+                    <div class="author-details">
+                        <span class="author-name">${blog.author || "Author"}</span>
+                        <span class="post-date">${blog.date || "2026"}</span>
+                    </div>
+                </div>
+                <button class="read-more-btn" data-id="${blog.id}">Read Article &rarr;</button>
             `;
+
+            card.appendChild(topDiv);
+            card.appendChild(footerDiv);
             homeContainer.appendChild(card);
+        });
+
+        document.querySelectorAll(".read-more-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const id = Number(e.target.getAttribute("data-id"));
+                const post = blogs.find(b => b.id === id);
+                if (post) {
+                    document.getElementById("modal-category").textContent = post.category;
+                    document.getElementById("modal-title").textContent = post.title;
+                    document.getElementById("modal-meta").textContent = `Published by ${post.author} • ${post.date}`;
+                    document.getElementById("modal-content").textContent = post.content;
+                    modal.classList.add("active");
+                }
+            });
         });
     }
 
@@ -127,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        document.getElementById("welcome-user").textContent = `Welcome, ${currentUser.username}`;
+        document.getElementById("welcome-user").textContent = `Welcome back, ${currentUser.username}`;
 
         const renderDashboardBlogs = () => {
             const blogs = JSON.parse(localStorage.getItem("blogs")) || [];
@@ -135,22 +199,29 @@ document.addEventListener("DOMContentLoaded", () => {
             userBlogContainer.innerHTML = "";
 
             if (myBlogs.length === 0) {
-                userBlogContainer.innerHTML = "<p>You haven't published any posts yet. Write your first one above!</p>";
+                userBlogContainer.innerHTML = "<p style='color: var(--text-secondary);'>You haven't published any posts yet. Write your first article above!</p>";
                 return;
             }
 
             myBlogs.forEach(blog => {
-                const card = document.createElement("div");
+                const card = document.createElement("article");
                 card.className = "blog-card";
-                card.innerHTML = `
-                    <div>
-                        <span class="badge">${blog.category}</span>
-                        <h3>${blog.title}</h3>
-                        <div class="blog-meta">${blog.date}</div>
-                        <p>${blog.content}</p>
-                    </div>
+                
+                const topDiv = document.createElement("div");
+                topDiv.innerHTML = `<span class="badge">${blog.category}</span><h3>${blog.title}</h3>`;
+                const p = document.createElement("p");
+                p.textContent = blog.content;
+                topDiv.appendChild(p);
+
+                const footerDiv = document.createElement("div");
+                footerDiv.className = "card-footer";
+                footerDiv.innerHTML = `
+                    <span class="post-date">${blog.date}</span>
                     <button class="btn btn-danger" data-id="${blog.id}">Delete Post</button>
                 `;
+
+                card.appendChild(topDiv);
+                card.appendChild(footerDiv);
                 userBlogContainer.appendChild(card);
             });
 
