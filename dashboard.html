@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - DevBlog</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>DevBlog</h1>
+            <ul id="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h2 id="welcome-user">Author Dashboard</h2>
+            <p>Publish new articles and manage your existing posts.</p>
+        </section>
+
+        <div class="form-container dashboard-form">
+            <h3>Write a New Blog Post</h3>
+            <form id="create-blog-form">
+                <div class="form-group">
+                    <label for="blog-title">Post Title</label>
+                    <input type="text" id="blog-title" placeholder="e.g., Mastering JavaScript Closures" required>
+                </div>
+                <div class="form-group">
+                    <label for="blog-category">Category</label>
+                    <select id="blog-category">
+                        <option value="Web Development">Web Development</option>
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="CSS & Design">CSS & Design</option>
+                        <option value="Career & Internship">Career & Internship</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="blog-content">Content</label>
+                    <textarea id="blog-content" rows="4" placeholder="Write your thoughts here..." required></textarea>
+                </div>
+                <button type="submit" class="btn">Publish Post</button>
+            </form>
+        </div>
+
+        <h3>Manage Your Posts</h3>
+        <section id="user-blog-container" class="blog-grid"></section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 DevBlog. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
