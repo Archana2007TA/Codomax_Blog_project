@@ -85,48 +85,80 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const homeContainer = document.getElementById("blog-container");
     if (homeContainer) {
+        const searchInput = document.getElementById("search-input");
+        const categoryFilter = document.getElementById("category-filter");
+
         const { data: blogs, error } = await supabaseClient
             .from("blogs")
             .select("*")
             .order("id", { ascending: false });
 
-        homeContainer.innerHTML = "";
-
         if (error) {
             homeContainer.innerHTML = `<p>Error loading blogs: ${error.message}</p>`;
-        } else if (!blogs || blogs.length === 0) {
-            homeContainer.innerHTML = "<p style='color: var(--text-secondary);'>No posts published yet.</p>";
         } else {
-            blogs.forEach(blog => {
-                const authorName = blog.author || "Author";
-                const initials = authorName.slice(0, 2).toUpperCase();
-                const card = document.createElement("article");
-                card.className = "blog-card";
+            const allBlogs = blogs || [];
 
-                const topDiv = document.createElement("div");
-                topDiv.innerHTML = `<span class="badge">${blog.category || "General"}</span><h3>${blog.title}</h3>`;
+            const renderFilteredBlogs = () => {
+                const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+                const selectedCategory = categoryFilter ? categoryFilter.value : "All";
 
-                const p = document.createElement("p");
-                p.textContent = blog.content;
-                topDiv.appendChild(p);
+                const filtered = allBlogs.filter(blog => {
+                    const matchesCategory = selectedCategory === "All" || blog.category === selectedCategory;
+                    const matchesQuery =
+                        !query ||
+                        (blog.title && blog.title.toLowerCase().includes(query)) ||
+                        (blog.content && blog.content.toLowerCase().includes(query)) ||
+                        (blog.author && blog.author.toLowerCase().includes(query));
+                    return matchesCategory && matchesQuery;
+                });
 
-                const footerDiv = document.createElement("div");
-                footerDiv.className = "card-footer";
-                footerDiv.innerHTML = `
-                    <div class="author-info">
-                        <div class="avatar">${initials}</div>
-                        <div class="author-details">
-                            <span class="author-name">${authorName}</span>
-                            <span class="post-date">${blog.date || "2026"}</span>
+                homeContainer.innerHTML = "";
+
+                if (filtered.length === 0) {
+                    homeContainer.innerHTML = "<p style='color: var(--text-secondary);'>No matching blog posts found.</p>";
+                    return;
+                }
+
+                filtered.forEach(blog => {
+                    const authorName = blog.author || "Author";
+                    const initials = authorName.slice(0, 2).toUpperCase();
+                    const card = document.createElement("article");
+                    card.className = "blog-card";
+
+                    const topDiv = document.createElement("div");
+                    topDiv.innerHTML = `<span class="badge">${blog.category || "General"}</span><h3>${blog.title}</h3>`;
+
+                    const p = document.createElement("p");
+                    p.textContent = blog.content;
+                    topDiv.appendChild(p);
+
+                    const footerDiv = document.createElement("div");
+                    footerDiv.className = "card-footer";
+                    footerDiv.innerHTML = `
+                        <div class="author-info">
+                            <div class="avatar">${initials}</div>
+                            <div class="author-details">
+                                <span class="author-name">${authorName}</span>
+                                <span class="post-date">${blog.date || "2026"}</span>
+                            </div>
                         </div>
-                    </div>
-                    <a href="post.html?id=${blog.id}" class="read-more-btn">Read Article &rarr;</a>
-                `;
+                        <a href="post.html?id=${blog.id}" class="read-more-btn">Read Article &rarr;</a>
+                    `;
 
-                card.appendChild(topDiv);
-                card.appendChild(footerDiv);
-                homeContainer.appendChild(card);
-            });
+                    card.appendChild(topDiv);
+                    card.appendChild(footerDiv);
+                    homeContainer.appendChild(card);
+                });
+            };
+
+            renderFilteredBlogs();
+
+            if (searchInput) {
+                searchInput.addEventListener("input", renderFilteredBlogs);
+            }
+            if (categoryFilter) {
+                categoryFilter.addEventListener("change", renderFilteredBlogs);
+            }
         }
     }
 
@@ -167,6 +199,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const authorName = currentUser.user_metadata?.username || currentUser.email;
         document.getElementById("welcome-user").textContent = `Welcome back, ${authorName}`;
 
+        const titleInput = document.getElementById("blog-title");
+        const categoryInput = document.getElementById("blog-category");
+        const contentInput = document.getElementById("blog-content");
+        const submitBtn = createBlogForm.querySelector("button[type='submit']");
+        let editingPostId = null;
+
+        const resetFormMode = () => {
+            editingPostId = null;
+            createBlogForm.reset();
+            if (submitBtn) {
+                submitBtn.textContent = "Publish Post";
+            }
+        };
+
         const renderDashboardBlogs = async () => {
             const { data: myBlogs, error } = await supabaseClient
                 .from("blogs")
@@ -200,12 +246,32 @@ document.addEventListener("DOMContentLoaded", async () => {
                 footerDiv.className = "card-footer";
                 footerDiv.innerHTML = `
                     <span class="post-date">${blog.date}</span>
-                    <button class="btn btn-danger" data-id="${blog.id}">Delete Post</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-edit" data-id="${blog.id}">Edit</button>
+                        <button class="btn btn-danger" data-id="${blog.id}">Delete Post</button>
+                    </div>
                 `;
 
                 card.appendChild(topDiv);
                 card.appendChild(footerDiv);
                 userBlogContainer.appendChild(card);
+            });
+
+            document.querySelectorAll(".btn-edit").forEach(button => {
+                button.addEventListener("click", (e) => {
+                    const postId = Number(e.target.getAttribute("data-id"));
+                    const postToEdit = myBlogs.find(b => b.id === postId);
+                    if (!postToEdit) return;
+
+                    editingPostId = postId;
+                    titleInput.value = postToEdit.title;
+                    categoryInput.value = postToEdit.category;
+                    contentInput.value = postToEdit.content;
+                    if (submitBtn) {
+                        submitBtn.textContent = "Update Post";
+                    }
+                    createBlogForm.scrollIntoView({ behavior: "smooth" });
+                });
             });
 
             document.querySelectorAll(".btn-danger").forEach(button => {
@@ -221,6 +287,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                         return;
                     }
 
+                    if (editingPostId === postId) {
+                        resetFormMode();
+                    }
+
                     renderDashboardBlogs();
                 });
             });
@@ -231,9 +301,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         createBlogForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
-            const title = document.getElementById("blog-title").value.trim();
-            const category = document.getElementById("blog-category").value;
-            const content = document.getElementById("blog-content").value.trim();
+            const title = titleInput.value.trim();
+            const category = categoryInput.value;
+            const content = contentInput.value.trim();
+
+            if (editingPostId !== null) {
+                const { error: updateError } = await supabaseClient
+                    .from("blogs")
+                    .update({ title, category, content })
+                    .eq("id", editingPostId);
+
+                if (updateError) {
+                    alert("Error updating post: " + updateError.message);
+                    return;
+                }
+
+                resetFormMode();
+                renderDashboardBlogs();
+                return;
+            }
 
             const { error: insertError } = await supabaseClient
                 .from("blogs")
@@ -250,7 +336,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return;
             }
 
-            createBlogForm.reset();
+            resetFormMode();
             renderDashboardBlogs();
         });
     }

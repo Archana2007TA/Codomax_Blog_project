@@ -25,6 +25,25 @@
             <p>Sharing my learning journey through code.</p>
         </section>
 
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+            <input
+                type="text"
+                id="search-input"
+                placeholder="Search blogs by title, content, or author..."
+                style="flex: 1; min-width: 220px; padding: 0.65rem 0.9rem; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-primary);"
+            >
+            <select
+                id="category-filter"
+                style="padding: 0.65rem 0.9rem; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-primary);"
+            >
+                <option value="All">All Categories</option>
+                <option value="Web Development">Web Development</option>
+                <option value="CSS & Design">CSS & Design</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="Backend & DB">Backend & DB</option>
+            </select>
+        </div>
+
         <section id="blog-container" class="blog-grid"></section>
     </main>
 
