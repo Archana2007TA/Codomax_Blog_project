@@ -1,14 +1,16 @@
+const SUPABASE_URL = "https://uwuroygqsvocxvyxxqhl.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_icKmCStwdzrQ8aQmsg6CwA_eIUJUUOg";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const sampleBlogs = [
     {
-        id: 1,
         title: "Getting Started with Semantic HTML5",
         category: "Web Development",
         author: "Adithya",
         date: "Nov 10, 2026",
-        content: "Semantic HTML5 tags like &lt;header&gt;, &lt;main&gt;, &lt;article&gt;, and &lt;section&gt; give your web pages clear meaning for both browsers and screen readers. Instead of wrapping everything in generic &lt;div&gt; containers, using semantic structures improves SEO, accessibility, and code readability across large frontend projects."
+        content: "Semantic HTML5 tags like <header>, <main>, <article>, and <section> give your web pages clear meaning for both browsers and screen readers. Instead of wrapping everything in generic <div> containers, using semantic structures improves SEO, accessibility, and code readability across large frontend projects."
     },
     {
-        id: 2,
         title: "Mastering Responsive Layouts with CSS Grid",
         category: "CSS & Design",
         author: "Adithya",
@@ -16,7 +18,6 @@ const sampleBlogs = [
         content: "CSS Grid introduces a true two-dimensional layout system to the web. By combining grid-template-columns with repeat(auto-fill, minmax(320px, 1fr)), you can create fluid card grids that adapt seamlessly from desktop monitors to mobile screens without writing dozens of complex media queries."
     },
     {
-        id: 3,
         title: "Client-Side State Management with LocalStorage",
         category: "JavaScript",
         author: "Codomax Team",
@@ -25,27 +26,21 @@ const sampleBlogs = [
     }
 ];
 
-document.addEventListener("DOMContentLoaded", () => {
-    let storedBlogs = JSON.parse(localStorage.getItem("blogs"));
-
-    // Force update sample data if it has broken tags or missing fields
-    if (!storedBlogs || storedBlogs.some(b => !b.category || !b.author || b.content.includes(",,,"))) {
-        localStorage.setItem("blogs", JSON.stringify(sampleBlogs));
-        storedBlogs = sampleBlogs;
-    }
-
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+document.addEventListener("DOMContentLoaded", async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUser = session ? session.user : null;
     const navLinks = document.getElementById("nav-links");
 
     if (navLinks) {
         if (currentUser) {
+            const displayName = currentUser.user_metadata?.username || currentUser.email;
             navLinks.innerHTML = `
                 <li><a href="index.html">Home</a></li>
                 <li><a href="dashboard.html">Dashboard</a></li>
-                <li><button id="logout-btn" class="btn-logout">Logout (${currentUser.username})</button></li>
+                <li><button id="logout-btn" class="btn-logout">Logout (${displayName})</button></li>
             `;
-            document.getElementById("logout-btn").addEventListener("click", () => {
-                localStorage.removeItem("currentUser");
+            document.getElementById("logout-btn").addEventListener("click", async () => {
+                await supabase.auth.signOut();
                 window.location.href = "login.html";
             });
         } else {
@@ -59,14 +54,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const registerForm = document.getElementById("register-form");
     if (registerForm) {
-        registerForm.addEventListener("submit", (e) => {
+        registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
-            const username = document.getElementById("username").value.trim();
+            const usernameInput = document.getElementById("username");
+            const username = usernameInput ? usernameInput.value.trim() : "";
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
 
-            if (!username || !email || !password) {
+            if (!email || !password || (usernameInput && !username)) {
                 alert("Please fill in all fields.");
                 return;
             }
@@ -76,110 +72,121 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const users = JSON.parse(localStorage.getItem("users")) || [];
-            if (users.some(user => user.email === email)) {
-                alert("An account with this email already exists.");
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { username }
+                }
+            });
+
+            if (error) {
+                alert(error.message);
                 return;
             }
 
-            users.push({ username, email, password });
-            localStorage.setItem("users", JSON.stringify(users));
-
-            alert("Registration successful! Please log in.");
+            alert("Registration successful! Please check your email or log in.");
             window.location.href = "login.html";
         });
     }
 
     const loginForm = document.getElementById("login-form");
     if (loginForm) {
-        loginForm.addEventListener("submit", (e) => {
+        loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const email = document.getElementById("login-email").value.trim();
             const password = document.getElementById("login-password").value;
 
-            const users = JSON.parse(localStorage.getItem("users")) || [];
-            const validUser = users.find(u => u.email === email && u.password === password);
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-            if (validUser) {
-                localStorage.setItem("currentUser", JSON.stringify(validUser));
-                window.location.href = "dashboard.html";
-            } else {
+            if (error) {
                 alert("Invalid email or password.");
+                return;
             }
+
+            window.location.href = "dashboard.html";
         });
     }
 
     const homeContainer = document.getElementById("blog-container");
     if (homeContainer) {
-        const blogs = JSON.parse(localStorage.getItem("blogs")) || [];
+        let { data: blogs, error } = await supabase
+            .from("blogs")
+            .select("*")
+            .order("id", { ascending: false });
+
+        if (!error && (!blogs || blogs.length === 0)) {
+            const { data: seeded } = await supabase
+                .from("blogs")
+                .insert(sampleBlogs)
+                .select();
+            if (seeded) {
+                blogs = seeded;
+            }
+        }
+
         homeContainer.innerHTML = "";
 
-        // Create reader modal dynamically
-        const modal = document.createElement("div");
-        modal.className = "modal-overlay";
-        modal.innerHTML = `
-            <div class="modal-box">
-                <div class="modal-header">
-                    <span class="badge" id="modal-category"></span>
-                    <button class="close-modal" id="close-modal">&times;</button>
-                </div>
-                <h2 id="modal-title" style="margin-bottom: 0.5rem;"></h2>
-                <p id="modal-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;"></p>
-                <p id="modal-content" style="color: var(--text-secondary); line-height: 1.8; white-space: pre-line;"></p>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        if (error || !blogs) {
+            homeContainer.innerHTML = "<p>Could not load blogs from Supabase. Check your URL, anon key, and table policies.</p>";
+        } else {
+            blogs.forEach(blog => {
+                const authorName = blog.author || "Author";
+                const initials = authorName.slice(0, 2).toUpperCase();
+                const card = document.createElement("article");
+                card.className = "blog-card";
 
-        document.getElementById("close-modal").addEventListener("click", () => modal.classList.remove("active"));
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) modal.classList.remove("active");
-        });
+                const topDiv = document.createElement("div");
+                topDiv.innerHTML = `<span class="badge">${blog.category || "General"}</span><h3>${blog.title}</h3>`;
 
-        blogs.forEach(blog => {
-            const initials = blog.author ? blog.author.slice(0, 2).toUpperCase() : "CB";
-            const card = document.createElement("article");
-            card.className = "blog-card";
-            
-            // Build card structure safely using textContent for paragraph text
-            const topDiv = document.createElement("div");
-            topDiv.innerHTML = `<span class="badge">${blog.category || "General"}</span><h3>${blog.title}</h3>`;
-            
-            const p = document.createElement("p");
-            p.textContent = blog.content; // Safe from HTML tag stripping
-            topDiv.appendChild(p);
+                const p = document.createElement("p");
+                p.textContent = blog.content;
+                topDiv.appendChild(p);
 
-            const footerDiv = document.createElement("div");
-            footerDiv.className = "card-footer";
-            footerDiv.innerHTML = `
-                <div class="author-info">
-                    <div class="avatar">${initials}</div>
-                    <div class="author-details">
-                        <span class="author-name">${blog.author || "Author"}</span>
-                        <span class="post-date">${blog.date || "2026"}</span>
+                const footerDiv = document.createElement("div");
+                footerDiv.className = "card-footer";
+                footerDiv.innerHTML = `
+                    <div class="author-info">
+                        <div class="avatar">${initials}</div>
+                        <div class="author-details">
+                            <span class="author-name">${authorName}</span>
+                            <span class="post-date">${blog.date || "2026"}</span>
+                        </div>
                     </div>
-                </div>
-                <button class="read-more-btn" data-id="${blog.id}">Read Article &rarr;</button>
-            `;
+                    <a href="post.html?id=${blog.id}" class="read-more-btn">Read Article &rarr;</a>
+                `;
 
-            card.appendChild(topDiv);
-            card.appendChild(footerDiv);
-            homeContainer.appendChild(card);
-        });
-
-        document.querySelectorAll(".read-more-btn").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const id = Number(e.target.getAttribute("data-id"));
-                const post = blogs.find(b => b.id === id);
-                if (post) {
-                    document.getElementById("modal-category").textContent = post.category;
-                    document.getElementById("modal-title").textContent = post.title;
-                    document.getElementById("modal-meta").textContent = `Published by ${post.author} • ${post.date}`;
-                    document.getElementById("modal-content").textContent = post.content;
-                    modal.classList.add("active");
-                }
+                card.appendChild(topDiv);
+                card.appendChild(footerDiv);
+                homeContainer.appendChild(card);
             });
-        });
+        }
+    }
+
+    const singlePostContainer = document.getElementById("single-post-container");
+    if (singlePostContainer) {
+        const params = new URLSearchParams(window.location.search);
+        const postId = params.get("id");
+
+        if (!postId) {
+            document.getElementById("post-title").textContent = "No Post Selected";
+        } else {
+            const { data: blog, error } = await supabase
+                .from("blogs")
+                .select("*")
+                .eq("id", postId)
+                .single();
+
+            if (error || !blog) {
+                document.getElementById("post-title").textContent = "Post Not Found";
+            } else {
+                document.getElementById("post-category").textContent = blog.category;
+                document.getElementById("post-title").textContent = blog.title;
+                document.getElementById("post-meta").textContent = `Published by ${blog.author} • ${blog.date}`;
+                document.getElementById("post-content").textContent = blog.content;
+            }
+        }
     }
 
     const createBlogForm = document.getElementById("create-blog-form");
@@ -191,14 +198,24 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        document.getElementById("welcome-user").textContent = `Welcome back, ${currentUser.username}`;
+        const authorName = currentUser.user_metadata?.username || currentUser.email;
+        document.getElementById("welcome-user").textContent = `Welcome back, ${authorName}`;
 
-        const renderDashboardBlogs = () => {
-            const blogs = JSON.parse(localStorage.getItem("blogs")) || [];
-            const myBlogs = blogs.filter(b => b.author === currentUser.username);
+        const renderDashboardBlogs = async () => {
+            const { data: myBlogs, error } = await supabase
+                .from("blogs")
+                .select("*")
+                .eq("author", authorName)
+                .order("id", { ascending: false });
+
             userBlogContainer.innerHTML = "";
 
-            if (myBlogs.length === 0) {
+            if (error) {
+                userBlogContainer.innerHTML = "<p style='color: var(--text-secondary);'>Error loading your posts.</p>";
+                return;
+            }
+
+            if (!myBlogs || myBlogs.length === 0) {
                 userBlogContainer.innerHTML = "<p style='color: var(--text-secondary);'>You haven't published any posts yet. Write your first article above!</p>";
                 return;
             }
@@ -206,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
             myBlogs.forEach(blog => {
                 const card = document.createElement("article");
                 card.className = "blog-card";
-                
+
                 const topDiv = document.createElement("div");
                 topDiv.innerHTML = `<span class="badge">${blog.category}</span><h3>${blog.title}</h3>`;
                 const p = document.createElement("p");
@@ -226,10 +243,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             document.querySelectorAll(".btn-danger").forEach(button => {
-                button.addEventListener("click", (e) => {
+                button.addEventListener("click", async (e) => {
                     const postId = Number(e.target.getAttribute("data-id"));
-                    const updatedBlogs = blogs.filter(b => b.id !== postId);
-                    localStorage.setItem("blogs", JSON.stringify(updatedBlogs));
+                    const { error: deleteError } = await supabase
+                        .from("blogs")
+                        .delete()
+                        .eq("id", postId);
+
+                    if (deleteError) {
+                        alert("Could not delete post: " + deleteError.message);
+                        return;
+                    }
+
                     renderDashboardBlogs();
                 });
             });
@@ -237,25 +262,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
         renderDashboardBlogs();
 
-        createBlogForm.addEventListener("submit", (e) => {
+        createBlogForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const title = document.getElementById("blog-title").value.trim();
             const category = document.getElementById("blog-category").value;
             const content = document.getElementById("blog-content").value.trim();
 
-            const blogs = JSON.parse(localStorage.getItem("blogs")) || [];
-            const newPost = {
-                id: Date.now(),
-                title,
-                category,
-                author: currentUser.username,
-                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-                content
-            };
+            const { error: insertError } = await supabase
+                .from("blogs")
+                .insert([{
+                    title,
+                    category,
+                    author: authorName,
+                    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                    content
+                }]);
 
-            blogs.unshift(newPost);
-            localStorage.setItem("blogs", JSON.stringify(blogs));
+            if (insertError) {
+                alert("Error publishing post: " + insertError.message);
+                return;
+            }
 
             createBlogForm.reset();
             renderDashboardBlogs();
