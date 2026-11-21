@@ -1,33 +1,9 @@
 const SUPABASE_URL = "https://uwuroygqsvocxvyxxqhl.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_icKmCStwdzrQ8aQmsg6CwA_eIUJUUOg";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const sampleBlogs = [
-    {
-        title: "Getting Started with Semantic HTML5",
-        category: "Web Development",
-        author: "Adithya",
-        date: "Nov 10, 2026",
-        content: "Semantic HTML5 tags like <header>, <main>, <article>, and <section> give your web pages clear meaning for both browsers and screen readers. Instead of wrapping everything in generic <div> containers, using semantic structures improves SEO, accessibility, and code readability across large frontend projects."
-    },
-    {
-        title: "Mastering Responsive Layouts with CSS Grid",
-        category: "CSS & Design",
-        author: "Adithya",
-        date: "Nov 12, 2026",
-        content: "CSS Grid introduces a true two-dimensional layout system to the web. By combining grid-template-columns with repeat(auto-fill, minmax(320px, 1fr)), you can create fluid card grids that adapt seamlessly from desktop monitors to mobile screens without writing dozens of complex media queries."
-    },
-    {
-        title: "Client-Side State Management with LocalStorage",
-        category: "JavaScript",
-        author: "Codomax Team",
-        date: "Nov 14, 2026",
-        content: "Modern web applications often need to persist user sessions and dynamic content across page reloads. Using JSON.stringify() and JSON.parse() with the browser's localStorage API lets you build complete authentication flows and CRUD dashboards in pure vanilla JavaScript."
-    }
-];
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     const currentUser = session ? session.user : null;
     const navLinks = document.getElementById("nav-links");
 
@@ -40,7 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <li><button id="logout-btn" class="btn-logout">Logout (${displayName})</button></li>
             `;
             document.getElementById("logout-btn").addEventListener("click", async () => {
-                await supabase.auth.signOut();
+                await supabaseClient.auth.signOut();
                 window.location.href = "login.html";
             });
         } else {
@@ -72,20 +48,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return;
             }
 
-            const { error } = await supabase.auth.signUp({
+            const { error } = await supabaseClient.auth.signUp({
                 email,
                 password,
-                options: {
-                    data: { username }
-                }
+                options: { data: { username } }
             });
 
             if (error) {
-                alert(error.message);
+                alert("Registration failed: " + error.message);
                 return;
             }
 
-            alert("Registration successful! Please check your email or log in.");
+            alert("Registration successful! Please log in.");
             window.location.href = "login.html";
         });
     }
@@ -98,10 +72,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const email = document.getElementById("login-email").value.trim();
             const password = document.getElementById("login-password").value;
 
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
             if (error) {
-                alert("Invalid email or password.");
+                alert("Login failed: " + error.message);
                 return;
             }
 
@@ -111,25 +85,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const homeContainer = document.getElementById("blog-container");
     if (homeContainer) {
-        let { data: blogs, error } = await supabase
+        const { data: blogs, error } = await supabaseClient
             .from("blogs")
             .select("*")
             .order("id", { ascending: false });
 
-        if (!error && (!blogs || blogs.length === 0)) {
-            const { data: seeded } = await supabase
-                .from("blogs")
-                .insert(sampleBlogs)
-                .select();
-            if (seeded) {
-                blogs = seeded;
-            }
-        }
-
         homeContainer.innerHTML = "";
 
-        if (error || !blogs) {
-            homeContainer.innerHTML = "<p>Could not load blogs from Supabase. Check your URL, anon key, and table policies.</p>";
+        if (error) {
+            homeContainer.innerHTML = `<p>Error loading blogs: ${error.message}</p>`;
+        } else if (!blogs || blogs.length === 0) {
+            homeContainer.innerHTML = "<p style='color: var(--text-secondary);'>No posts published yet.</p>";
         } else {
             blogs.forEach(blog => {
                 const authorName = blog.author || "Author";
@@ -172,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!postId) {
             document.getElementById("post-title").textContent = "No Post Selected";
         } else {
-            const { data: blog, error } = await supabase
+            const { data: blog, error } = await supabaseClient
                 .from("blogs")
                 .select("*")
                 .eq("id", postId)
@@ -202,7 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("welcome-user").textContent = `Welcome back, ${authorName}`;
 
         const renderDashboardBlogs = async () => {
-            const { data: myBlogs, error } = await supabase
+            const { data: myBlogs, error } = await supabaseClient
                 .from("blogs")
                 .select("*")
                 .eq("author", authorName)
@@ -211,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             userBlogContainer.innerHTML = "";
 
             if (error) {
-                userBlogContainer.innerHTML = "<p style='color: var(--text-secondary);'>Error loading your posts.</p>";
+                userBlogContainer.innerHTML = `<p style='color: var(--text-secondary);'>Error: ${error.message}</p>`;
                 return;
             }
 
@@ -245,7 +211,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.querySelectorAll(".btn-danger").forEach(button => {
                 button.addEventListener("click", async (e) => {
                     const postId = Number(e.target.getAttribute("data-id"));
-                    const { error: deleteError } = await supabase
+                    const { error: deleteError } = await supabaseClient
                         .from("blogs")
                         .delete()
                         .eq("id", postId);
@@ -269,7 +235,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const category = document.getElementById("blog-category").value;
             const content = document.getElementById("blog-content").value.trim();
 
-            const { error: insertError } = await supabase
+            const { error: insertError } = await supabaseClient
                 .from("blogs")
                 .insert([{
                     title,
