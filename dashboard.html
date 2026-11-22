@@ -12,43 +12,45 @@
             <h1>DevBlog</h1>
             <ul id="nav-links">
                 <li><a href="index.html">Home</a></li>
-                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
             </ul>
         </nav>
     </header>
 
     <main>
-        <section class="hero">
-            <h2 id="welcome-user">Author Dashboard</h2>
-            <p>Publish new articles and manage your existing posts.</p>
-        </section>
+        <div id="dashboard-content" style="display: none;">
+            <section class="form-container" style="max-width: 800px; margin-bottom: 2rem;">
+                <h2 id="welcome-user">Welcome back</h2>
+                <div id="user-profile" style="margin: 0.75rem 0 1.25rem 0; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-secondary, #161b22); font-size: 0.92rem;"></div>
 
-        <div class="form-container dashboard-form">
-            <h3>Write a New Blog Post</h3>
-            <form id="create-blog-form">
-                <div class="form-group">
-                    <label for="blog-title">Post Title</label>
-                    <input type="text" id="blog-title" placeholder="e.g., Mastering JavaScript Closures" required>
-                </div>
-                <div class="form-group">
-                    <label for="blog-category">Category</label>
-                    <select id="blog-category">
-                        <option value="Web Development">Web Development</option>
-                        <option value="JavaScript">JavaScript</option>
-                        <option value="CSS & Design">CSS & Design</option>
-                        <option value="Career & Internship">Career & Internship</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="blog-content">Content</label>
-                    <textarea id="blog-content" rows="4" placeholder="Write your thoughts here..." required></textarea>
-                </div>
-                <button type="submit" class="btn">Publish Post</button>
-            </form>
+                <form id="create-blog-form">
+                    <div class="form-group">
+                        <label for="blog-title">Title</label>
+                        <input type="text" id="blog-title" placeholder="Enter blog title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blog-category">Category</label>
+                        <select id="blog-category" required>
+                            <option value="Web Development">Web Development</option>
+                            <option value="CSS & Design">CSS & Design</option>
+                            <option value="JavaScript">JavaScript</option>
+                            <option value="Backend & DB">Backend & DB</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blog-content">Content</label>
+                        <textarea id="blog-content" rows="6" placeholder="Write your article..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-full">Publish Post</button>
+                </form>
+            </section>
+
+            <section style="max-width: 800px; margin: 0 auto;">
+                <h3 style="margin-bottom: 1rem;">My Published Posts</h3>
+                <div id="user-blog-container" class="blog-grid"></div>
+            </section>
         </div>
-
-        <h3>Manage Your Posts</h3>
-        <section id="user-blog-container" class="blog-grid"></section>
     </main>
 
     <footer>

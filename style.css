@@ -433,3 +433,20 @@ footer {
         padding: 1.5rem 1rem;
     }
 }
+
+#category-filter,
+#blog-category,
+select {
+    background-color: #161b22;
+    color: #f0f6fc;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+}
+
+#category-filter option,
+#blog-category option,
+select option {
+    background-color: #161b22;
+    color: #f0f6fc;
+}

@@ -192,12 +192,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (createBlogForm && userBlogContainer) {
         if (!currentUser) {
-            window.location.href = "login.html";
+            window.location.replace("login.html");
             return;
         }
 
+        const dashboardContent = document.getElementById("dashboard-content");
+        if (dashboardContent) {
+            dashboardContent.style.display = "block";
+        }
+
         const authorName = currentUser.user_metadata?.username || currentUser.email;
-        document.getElementById("welcome-user").textContent = `Welcome back, ${authorName}`;
+        const welcomeEl = document.getElementById("welcome-user");
+        if (welcomeEl) {
+            welcomeEl.textContent = `Welcome back, ${authorName}`;
+        }
+
+        const profileEl = document.getElementById("user-profile");
+        if (profileEl) {
+            profileEl.textContent = `Signed in as: ${authorName} (${currentUser.email})`;
+        }
 
         const titleInput = document.getElementById("blog-title");
         const categoryInput = document.getElementById("blog-category");
